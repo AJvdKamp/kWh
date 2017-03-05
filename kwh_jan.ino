@@ -8,53 +8,27 @@
 #define MS_PER_HOUR    3.6e6
 
 struct SettingsStruct {
-  unsigned short cycles_per_kwh;
-  unsigned char  lower_threshold;
-  unsigned char  upper_threshold;
-  unsigned short max_watt;
+  unsigned short cycles_per_kwh = 375;
+  unsigned char  lower_threshold = 101;
+  unsigned char  upper_threshold = 105;
+  unsigned short max_watt = 6000;
 } settings;
 
-unsigned long debounce_time;
-
-void calc_debounce() {
-  debounce_time = (1000 * ((double) MS_PER_HOUR / ((long) settings.cycles_per_kwh * settings.max_watt)));
-  Serial.print("Debounce time (ms): ");
-  Serial.println(debounce_time);
-}
-
-//Initial EEPROM content can be 0x00 or 0xff
-void read_settings() {
-  EEPROM_readAnything(EEPROM_OFFSET, settings);
-  if (settings.lower_threshold == 0x00) settings.lower_threshold = 101;
-  if (settings.upper_threshold == 0x00) settings.upper_threshold = 105;
-  if (settings.cycles_per_kwh == 0x0000) settings.cycles_per_kwh = 375;
-  if (settings.max_watt == 0x0000) settings.max_watt = 6000;
-  Serial.println("Settings: ");
-  Serial.println(settings.cycles_per_kwh, DEC);
-  Serial.println(settings.lower_threshold, DEC);
-  Serial.println(settings.upper_threshold, DEC);
-  Serial.println(settings.max_watt, DEC);
-  calc_debounce();
-}
-
-void save_settings() {
-  EEPROM_writeAnything(EEPROM_OFFSET, settings);
-  calc_debounce();
-}
+boolean ledstate = LOW;
+unsigned long debounce_time = 1600;
 
 void setup () {
   
   Serial.begin(115200);
 //  pinMode(A0, INPUT);
-  read_settings();
 }
 
-boolean ledstate = LOW;
 unsigned long cycle = 0;
 unsigned long previous = 0; // timestamp
 
 unsigned short readings[READINGS];
 unsigned short cursor = 0;
+boolean gotenough = false;
 
 unsigned short hits = 0;
 
@@ -63,6 +37,7 @@ boolean settingschanged = false;
   
 void loop () {
 //  delay(10);
+
 
   //  Calulate the sum of 40 samples
   unsigned short sum = 0;
@@ -80,13 +55,22 @@ void loop () {
 //  Calculate the ratio of the 40 samples and the 250 samples multipied by 100
   unsigned short ratio = (double) sum / (average+1) * 100;
   
+//  if (restore_time && millis() >= restore_time) {
+//    restore_time = 0;
+//    if (settingschanged) {
+//      Serial.println("Saving settings");
+//      settingschanged = false;
+//    }
+//  }
+   
+   readings[cursor++] = sum;
+   if (cursor >= READINGS) {
+    cursor = 0;
+//      Serial.println("Done averaging");
+   }
+ 
   if (restore_time && millis() >= restore_time) {
     restore_time = 0;
-    if (settingschanged) {
-      Serial.println("Saving settings");
-      save_settings();
-      settingschanged = false;
-    }
   }
 
   unsigned short lo = settings.lower_threshold;
@@ -96,15 +80,49 @@ void loop () {
       lo = 400;
       hi = 1000;
   }
+
+  boolean newledstate = ledstate 
+    ? (ratio >  lo)
+    : (ratio >= hi);
+
+  int numleds = ratio - lo;
+  if (numleds < 0) numleds = 0;
+  if (numleds > 8) numleds = 8;
+  unsigned long ledmask = 0xff >> 8 - numleds;
+  if (newledstate) ledmask <<= 8;
    
-   readings[cursor++] = sum;
-   if (cursor >= READINGS) {
-    cursor = 0;
-//      Serial.println("Done averaging");
-   }
+  if ((!gotenough) || (!newledstate)) {
+    readings[cursor++] = sum;
+    if (cursor >= READINGS) {
+      cursor = 0;
+      if (!gotenough) {
+        gotenough = true;
+        Serial.println("Done averaging");
+      }
+    }
+  }
+
+  
+  if (newledstate) hits++;
+ 
+  if (newledstate == ledstate) return;
+  
+  digitalWrite(13, ledstate = newledstate);
+
+  if (!ledstate) {
+    Serial.print("Marker: ");
+    Serial.print(millis() - previous);
+    Serial.print(" ms (");
+    Serial.print(hits, DEC);
+    Serial.println(" readings)");
+    hits = 0;
+    return;
+  }
   
   unsigned long now = millis();
   unsigned long time = now - previous;
+
+  Serial.println(time);
 
   if (time < debounce_time) return;
 
