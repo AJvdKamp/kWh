@@ -8,7 +8,7 @@
 #define MS_PER_HOUR    3.6e6
 
 struct SettingsStruct {
-  unsigned short cycles_per_kwh = 375;
+  unsigned short cycles_per_kwh = 400;
   unsigned char  lower_threshold = 101;
   unsigned char  upper_threshold = 105;
   unsigned short max_watt = 6000;
