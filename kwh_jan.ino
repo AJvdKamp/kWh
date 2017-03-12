@@ -2,7 +2,6 @@
 #include <inttypes.h>
 
 #define READINGS       250
-#define EEPROM_OFFSET  512
 #define MS_PER_HOUR    3.6e6
 
 int ledPin = 2; // GPIO2 of ESP8266
@@ -14,7 +13,7 @@ struct SettingsStruct {
 } settings;
 
 boolean ledstate = LOW;
-unsigned long debounce_time = 1600;
+unsigned long debounce_time = 600;
 
 void setup () {
   
@@ -64,35 +63,19 @@ void loop () {
   unsigned short lo = settings.lower_threshold;
   unsigned short hi = settings.upper_threshold;
 
-// If ledstate has not changed, make newledstate high if ration > lo. If the ledstate HAS changed make newledstae hig if ratio >= hi
+// If ledstate has not changed, make newledstate high if ration > lo. If the ledstate HAS changed make newledstae low if ratio >= hi
   boolean newledstate = ledstate 
     ? (ratio >  lo)
     : (ratio >= hi);
 
-  int numleds = ratio - lo;
-  if (numleds < 0) numleds = 0;
-  if (numleds > 8) numleds = 8;
-  unsigned long ledmask = 0xff >> 8 - numleds;
-  if (newledstate) ledmask <<= 8;
-   
-  if ((!gotenough) || (!newledstate)) {
-    readings[cursor++] = sum;
-    if (cursor >= READINGS) {
-      cursor = 0;
-      if (!gotenough) {
-        gotenough = true;
-        Serial.println("Done averaging");
-      }
-    }
-  }
-
-  
   if (newledstate) hits++;
  
   if (newledstate == ledstate) return;
 
+  ledstate = newledstate;
+
 //  LED is ON (low) if the marker is detected
-  digitalWrite(ledPin, ledstate = newledstate);
+  digitalWrite(ledPin, !ledstate);
 
   if (!ledstate) {
     Serial.print("Marker: ");
