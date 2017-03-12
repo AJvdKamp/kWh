@@ -60,7 +60,7 @@ void loop () {
   unsigned short lo = settings.lower_threshold;
   unsigned short hi = settings.upper_threshold;
 
-// If ledstate has not changed ledstate becomes ???
+// If ledstate has not changed ledstate becomes ????
   boolean newledstate = ledstate 
     ? (ratio >  lo)
     : (ratio >= hi);
