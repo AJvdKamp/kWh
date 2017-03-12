@@ -1,16 +1,16 @@
 #include <ESP8266WiFi.h>
-//#include "EEPROM.h"
-#include "AnythingEEPROM.h"
 #include <inttypes.h>
 
 #define READINGS       250
 #define EEPROM_OFFSET  512
 #define MS_PER_HOUR    3.6e6
 
+int ledPin = 2; // GPIO2 of ESP8266
+
 struct SettingsStruct {
   unsigned short cycles_per_kwh = 400;
   unsigned char  lower_threshold = 101;
-  unsigned char  upper_threshold = 105;
+  unsigned char  upper_threshold = 110;
 } settings;
 
 boolean ledstate = LOW;
@@ -19,7 +19,11 @@ unsigned long debounce_time = 1600;
 void setup () {
   
   Serial.begin(115200);
+  pinMode(ledPin, OUTPUT);
+  digitalWrite(ledPin, HIGH);
 }
+
+
 
 unsigned long cycle = 0;
 unsigned long previous = 0; // timestamp
@@ -60,7 +64,7 @@ void loop () {
   unsigned short lo = settings.lower_threshold;
   unsigned short hi = settings.upper_threshold;
 
-// If ledstate has not changed ledstate becomes ????
+// If ledstate has not changed, make newledstate high if ration > lo. If the ledstate HAS changed make newledstae hig if ratio >= hi
   boolean newledstate = ledstate 
     ? (ratio >  lo)
     : (ratio >= hi);
@@ -86,8 +90,9 @@ void loop () {
   if (newledstate) hits++;
  
   if (newledstate == ledstate) return;
-  
-  digitalWrite(13, ledstate = newledstate);
+
+//  LED is ON (low) if the marker is detected
+  digitalWrite(ledPin, ledstate = newledstate);
 
   if (!ledstate) {
     Serial.print("Marker: ");
