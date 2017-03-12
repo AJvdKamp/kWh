@@ -11,7 +11,6 @@ struct SettingsStruct {
   unsigned short cycles_per_kwh = 400;
   unsigned char  lower_threshold = 101;
   unsigned char  upper_threshold = 105;
-  unsigned short max_watt = 6000;
 } settings;
 
 boolean ledstate = LOW;
@@ -20,7 +19,6 @@ unsigned long debounce_time = 1600;
 void setup () {
   
   Serial.begin(115200);
-//  pinMode(A0, INPUT);
 }
 
 unsigned long cycle = 0;
@@ -31,9 +29,6 @@ unsigned short cursor = 0;
 boolean gotenough = false;
 
 unsigned short hits = 0;
-
-unsigned long restore_time = 0;
-boolean settingschanged = false;
   
 void loop () {
 //  delay(10);
@@ -45,42 +40,27 @@ void loop () {
     sum += analogRead(A0);
   }
 
-  // Calculate average over 250 (READINGS)samples 
+  // Calculate average over 250 sum samples 
   unsigned long bigsum = 0;
   for (unsigned short i = 0; i < READINGS; i++){
     bigsum += readings[i];
   }
   unsigned short average = bigsum / READINGS;
   
-//  Calculate the ratio of the 40 samples and the 250 samples multipied by 100
+//  Calculate the ratio of the sum samples and the 250 sum samples multipied by 100
   unsigned short ratio = (double) sum / (average+1) * 100;
   
-//  if (restore_time && millis() >= restore_time) {
-//    restore_time = 0;
-//    if (settingschanged) {
-//      Serial.println("Saving settings");
-//      settingschanged = false;
-//    }
-//  }
-   
+//   Read 250 sum samples in the reading array
    readings[cursor++] = sum;
    if (cursor >= READINGS) {
     cursor = 0;
-//      Serial.println("Done averaging");
    }
- 
-  if (restore_time && millis() >= restore_time) {
-    restore_time = 0;
-  }
+
 
   unsigned short lo = settings.lower_threshold;
   unsigned short hi = settings.upper_threshold;
 
-  if (hi == 254) {
-      lo = 400;
-      hi = 1000;
-  }
-
+// If ledstate has not changed ledstate becomes ???
   boolean newledstate = ledstate 
     ? (ratio >  lo)
     : (ratio >= hi);
