@@ -6,14 +6,13 @@
 
 int ledPin = 2; // GPIO2 of ESP8266
 
-struct SettingsStruct {
-  unsigned short cycles_per_kwh = 400;
-  unsigned char  lower_threshold = 101;
-  unsigned char  upper_threshold = 110;
-} settings;
-
+// Power measurement settings
+unsigned short cycles_per_kwh = 400;
+unsigned char  loThresholdP = 101;
+unsigned char  hiThresholdP = 110;
+unsigned long debounceTimeP = 600;
 boolean ledstate = LOW;
-unsigned long debounce_time = 600;
+
 
 void setup () {
   
@@ -60,13 +59,10 @@ void loop () {
    }
 
 
-  unsigned short lo = settings.lower_threshold;
-  unsigned short hi = settings.upper_threshold;
-
 // If ledstate has not changed, make newledstate high if ration > lo. If the ledstate HAS changed make newledstae low if ratio >= hi
   boolean newledstate = ledstate 
-    ? (ratio >  lo)
-    : (ratio >= hi);
+    ? (ratio >  loThresholdP)
+    : (ratio >= hiThresholdP);
 
   if (newledstate) hits++;
  
@@ -92,7 +88,7 @@ void loop () {
 
   Serial.println(time);
 
-  if (time < debounce_time) return;
+  if (time < debounceTimeP) return;
 
   previous = now;  
  
@@ -101,7 +97,7 @@ void loop () {
     return;
   }
   
-  double W = 1000 * ((double) MS_PER_HOUR / time) / settings.cycles_per_kwh;
+  double W = 1000 * ((double) MS_PER_HOUR / time) / cycles_per_kwh;
   Serial.print("Cycle ");
   Serial.print(cycle, DEC);
   Serial.print(": ");
