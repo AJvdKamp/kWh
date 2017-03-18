@@ -11,7 +11,7 @@ unsigned short cycles_per_kwh = 400;
 unsigned char  loThresholdP = 101;
 unsigned char  hiThresholdP = 110;
 unsigned long debounceTimeP = 600;
-boolean ledstate = LOW;
+boolean markerState = LOW;
 
 
 void setup () {
@@ -21,20 +21,14 @@ void setup () {
   digitalWrite(ledPin, HIGH);
 }
 
-
-
 unsigned long cycle = 0;
 unsigned long previous = 0; // timestamp
-
 unsigned short readings[READINGS];
 unsigned short cursor = 0;
 boolean gotenough = false;
-
 unsigned short hits = 0;
   
 void loop () {
-//  delay(10);
-
 
   //  Calulate the sum of 40 samples
   unsigned short sum = 0;
@@ -48,32 +42,33 @@ void loop () {
     bigsum += readings[i];
   }
   unsigned short average = bigsum / READINGS;
-  
+
 //  Calculate the ratio of the sum samples and the 250 sum samples multipied by 100
   unsigned short ratio = (double) sum / (average+1) * 100;
   
-//   Read 250 sum samples in the reading array
+//   Keep 250 sum samples in the reading array
+
    readings[cursor++] = sum;
    if (cursor >= READINGS) {
     cursor = 0;
    }
 
-
-// If ledstate has not changed, make newledstate high if ration > lo. If the ledstate HAS changed make newledstae low if ratio >= hi
-  boolean newledstate = ledstate 
+// If markerState has not changed, make newmarkerState high if ration > lo. If the markerState HAS changed make newledstae low if ratio >= hi
+  boolean newmarkerState = markerState 
     ? (ratio >  loThresholdP)
     : (ratio >= hiThresholdP);
 
-  if (newledstate) hits++;
- 
-  if (newledstate == ledstate) return;
+  if (newmarkerState) hits++;
 
-  ledstate = newledstate;
+// Return if the markerstate has not changed
+  if (newmarkerState == markerState) return;
+
+  markerState = newmarkerState;
 
 //  LED is ON (low) if the marker is detected
-  digitalWrite(ledPin, !ledstate);
+  digitalWrite(ledPin, !markerState);
 
-  if (!ledstate) {
+  if (!markerState) {
     Serial.print("Marker: ");
     Serial.print(millis() - previous);
     Serial.print(" ms (");
@@ -91,7 +86,8 @@ void loop () {
   if (time < debounceTimeP) return;
 
   previous = now;  
- 
+
+// If cycle=0 discard the cycle. Post increase the cycle
   if (!cycle++) {
     Serial.println("Discarding incomplete cycle.");
     return;
